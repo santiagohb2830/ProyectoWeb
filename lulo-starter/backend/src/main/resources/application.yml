@@ -34,13 +34,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,metrics
   endpoint:
     health:
-      show-details: never
+      show-details: when_authorized
 
-app:
+lulo:
   jwt:
-    # JWT no implementado aún — valor por defecto evita fallo al arrancar
-    secret: ${JWT_SECRET:disabled}
-    expirationMinutes: ${JWT_EXPIRATION_MINUTES:120}
+    secret: ${JWT_SECRET:lulo-secret-key-change-in-production-please-make-it-long-enough-256bits}
+    expiry-ms: ${JWT_EXPIRY_MS:3600000}

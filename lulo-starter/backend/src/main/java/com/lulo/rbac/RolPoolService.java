@@ -43,12 +43,44 @@ public class RolPoolService {
                 .toList();
     }
 
+    /**
+     * Catálogo de permisos asignables al pool. La lista se filtra según el
+     * tipo de pool:
+     *   - Pool de Lulo (empresa LULO-APP): solo permisos administrativos
+     *     (EMPRESA_*, LULO_*, METRICAS_VER, AUDIT_*, SOPORTE_*). Lulo no
+     *     opera procesos ni diagramas.
+     *   - Pool de empresa cliente: solo permisos operacionales
+     *     (PROCESO_*, DIAGRAMA_*, ROL_*, USUARIO_*, POOL_*, AUDIT_VER).
+     */
     @Transactional(readOnly = true)
     public List<PermisoResponse> listarPermisos(UUID poolId, UUID usuarioId) {
         poolPermissionService.requirePermisoEnPool(usuarioId, poolId, "ROL_VER");
+        var pool = poolPermissionService.requirePoolDeEmpresa(poolId,
+                poolPermissionService.requireUsuario(usuarioId).getEmpresa().getId());
+        boolean esLulo = "LULO-APP".equals(pool.getEmpresa().getNit());
         return permisoRepository.findAllByOrderByCodigoAsc().stream()
+                .filter(p -> esLulo ? esPermisoAdminLulo(p.getCodigo())
+                                    : esPermisoOperacional(p.getCodigo()))
                 .map(this::toPermisoResponse)
                 .toList();
+    }
+
+    private boolean esPermisoAdminLulo(String codigo) {
+        return codigo.startsWith("EMPRESA_")
+                || codigo.startsWith("LULO_")
+                || codigo.startsWith("SOPORTE_")
+                || codigo.equals("METRICAS_VER")
+                || codigo.equals("AUDIT_GLOBAL_VER")
+                || codigo.equals("AUDIT_VER");
+    }
+
+    private boolean esPermisoOperacional(String codigo) {
+        return codigo.startsWith("PROCESO_")
+                || codigo.startsWith("DIAGRAMA_")
+                || codigo.startsWith("ROL_")
+                || codigo.startsWith("USUARIO_")
+                || codigo.startsWith("POOL_")
+                || codigo.equals("AUDIT_VER");
     }
 
     @Transactional
@@ -66,13 +98,34 @@ public class RolPoolService {
             throw new ApiException("Ya existe un rol activo con ese nombre en el pool", HttpStatus.CONFLICT);
         }
 
+        Set<Permiso> permisos = resolvePermisos(request.getCodigosPermiso());
+
+        // Bloquear duplicados por conjunto de permisos: si otro rol activo
+        // del mismo pool tiene exactamente los mismos permisos, rechazar.
+        Set<String> codigosNuevos = permisos.stream()
+                .map(Permiso::getCodigo)
+                .collect(java.util.stream.Collectors.toSet());
+        RolPool duplicado = rolPoolRepository.findByPoolIdAndActivoTrueOrderByNombreAsc(pool.getId())
+                .stream()
+                .filter(r -> r.getPermisos().stream()
+                        .map(Permiso::getCodigo)
+                        .collect(java.util.stream.Collectors.toSet())
+                        .equals(codigosNuevos))
+                .findFirst()
+                .orElse(null);
+        if (duplicado != null) {
+            throw new ApiException(
+                    "El rol \"" + duplicado.getNombre() + "\" ya tiene exactamente esos permisos",
+                    HttpStatus.CONFLICT);
+        }
+
         RolPool rolPool = new RolPool();
         rolPool.setPool(pool);
         rolPool.setNombre(nombre);
         rolPool.setDescripcion(normalize(request.getDescripcion()));
         rolPool.setActivo(true);
         rolPool.setEsPropietario(false);
-        rolPool.setPermisos(resolvePermisos(request.getCodigosPermiso()));
+        rolPool.setPermisos(permisos);
         rolPool = rolPoolRepository.save(rolPool);
 
         auditService.registrar(

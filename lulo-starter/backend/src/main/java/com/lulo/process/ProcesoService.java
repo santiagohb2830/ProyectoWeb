@@ -124,6 +124,8 @@ public class ProcesoService {
     @Transactional
     public ProcesoResponse crear(CrearProcesoRequest request) {
 
+        bloquearSiLuloInternal();
+
         var empresa = empresaRepository.findById(request.getEmpresaId())
                 .orElseThrow(() -> new ApiException("Empresa no encontrada", HttpStatus.NOT_FOUND));
 
@@ -171,6 +173,16 @@ public class ProcesoService {
         log.setCaso(null);
         casoLogRepository.save(log);
 
+        auditService.registrar(
+                proceso.getEmpresa(),
+                creadoPor,
+                "PROCESO",
+                proceso.getId(),
+                "CREAR",
+                null,
+                snapshot(proceso)
+        );
+
         return toResponse(proceso);
     }
 
@@ -178,6 +190,8 @@ public class ProcesoService {
 
     @Transactional
     public ProcesoResponse editar(UUID procesoId, EditarProcesoRequest request) {
+
+        bloquearSiLuloInternal();
 
         Proceso proceso = procesoRepository.findByIdAndActivoTrue(procesoId)
                 .orElseThrow(() -> new ApiException("Proceso no encontrado", HttpStatus.NOT_FOUND));
@@ -256,6 +270,8 @@ public class ProcesoService {
     @Transactional
     public void archivar(UUID procesoId, EliminarProcesoRequest request) {
 
+        bloquearSiLuloInternal();
+
         Proceso proceso = procesoRepository.findByIdAndActivoTrue(procesoId)
                 .orElseThrow(() -> new ApiException("Proceso no encontrado", HttpStatus.NOT_FOUND));
 
@@ -287,6 +303,21 @@ public class ProcesoService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Bloquea la operación si el caller es usuario interno de Lulo (superadmin
+     * o empresa LULO-APP). Lulo no crea/edita procesos de cliente: su acceso a
+     * procesos es solo lectura para soporte.
+     */
+    private void bloquearSiLuloInternal() {
+        com.lulo.security.AuthContext.current().ifPresent(u -> {
+            if (u.isSuperadmin()) {
+                throw new ApiException(
+                        "El SUPERADMIN no puede modificar procesos. Acceso de soporte solo lectura.",
+                        HttpStatus.FORBIDDEN);
+            }
+        });
+    }
 
     private Map<String, Object> snapshot(Proceso p) {
         Map<String, Object> m = new LinkedHashMap<>();

@@ -57,6 +57,7 @@ class EmpresaServiceTest {
         requestValido = new RegistroEmpresaRequest(
                 "Empresa Demo SAS",
                 "900111222-1",
+                "demo.com",
                 "contacto@demo.com",
                 "admin@demo.com",
                 "Admin1234!"

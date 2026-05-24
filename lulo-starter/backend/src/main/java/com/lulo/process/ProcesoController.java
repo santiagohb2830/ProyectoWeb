@@ -15,18 +15,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/procesos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Procesos", description = "Gestión de procesos organizacionales")
 public class ProcesoController {
 
     private final ProcesoService procesoService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(
             summary = "Listar procesos",
             description = "Lista paginada con filtros opcionales por estado, categoría y nombre")
@@ -41,6 +42,7 @@ public class ProcesoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
             summary = "Obtener proceso con diagrama",
             description = "Retorna el proceso y todos sus elementos del diagrama: lanes, nodos y arcos")
@@ -52,6 +54,7 @@ public class ProcesoController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_PROCESO_CREAR') or hasRole('ADMIN_EMPRESA')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Crear proceso",
@@ -61,6 +64,7 @@ public class ProcesoController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PROCESO_EDITAR') or hasRole('ADMIN_EMPRESA')")
     @Operation(
             summary = "Editar proceso",
             description = "Actualiza los campos indicados del proceso y registra el cambio en el historial")
@@ -71,6 +75,7 @@ public class ProcesoController {
     }
 
     @PutMapping("/{id}/estado")
+    @PreAuthorize("hasAuthority('PERM_PROCESO_PUBLICAR') or hasAuthority('PERM_PROCESO_EDITAR') or hasRole('ADMIN_EMPRESA')")
     @Operation(
             summary = "Cambiar estado de proceso",
             description = "Cambia el estado del proceso y lo registra en el dashboard")
@@ -82,6 +87,7 @@ public class ProcesoController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PROCESO_ELIMINAR') or hasRole('ADMIN_EMPRESA')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
             summary = "Eliminar proceso",

@@ -33,6 +33,12 @@ public class PoolPermissionService {
     @Transactional(readOnly = true)
     public Usuario requireUsuarioDeEmpresa(UUID usuarioId, UUID empresaId) {
         Usuario usuario = requireUsuario(usuarioId);
+        // SUPERADMIN puede consultar cualquier empresa (modo soporte solo-lectura).
+        if (com.lulo.security.AuthContext.current()
+                .map(com.lulo.security.AuthenticatedUser::isSuperadmin)
+                .orElse(false)) {
+            return usuario;
+        }
         if (!usuario.getEmpresa().getId().equals(empresaId)) {
             throw new ApiException("El usuario no pertenece a esta empresa", HttpStatus.FORBIDDEN);
         }

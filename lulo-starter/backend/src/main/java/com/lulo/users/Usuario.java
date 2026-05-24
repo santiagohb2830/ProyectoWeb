@@ -34,4 +34,8 @@ public class Usuario extends AuditableEntity {
 
     @Column(nullable = false)
     private String estado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_usuario", nullable = false, length = 20)
+    private TipoUsuario tipoUsuario = TipoUsuario.USUARIO;
 }
