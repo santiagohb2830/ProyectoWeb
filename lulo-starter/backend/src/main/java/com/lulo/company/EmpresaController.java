@@ -46,10 +46,12 @@ public class EmpresaController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Detalle de empresa (SUPERADMIN o miembro de la empresa)")
+    @Operation(summary = "Detalle de empresa")
     public EmpresaDetalleResponse obtener(@PathVariable UUID id) {
         AuthenticatedUser user = AuthContext.require();
-        if (!user.isSuperadmin() && (user.empresaId() == null || !user.empresaId().equals(id))) {
+        boolean esMiembro = user.empresaId() != null && user.empresaId().equals(id);
+        boolean tienePermisoLulo = user.hasPermiso("EMPRESA_VER");
+        if (!user.isSuperadmin() && !esMiembro && !tienePermisoLulo) {
             throw new ApiException("No autorizado para ver esta empresa", HttpStatus.FORBIDDEN);
         }
         return empresaService.obtener(id);

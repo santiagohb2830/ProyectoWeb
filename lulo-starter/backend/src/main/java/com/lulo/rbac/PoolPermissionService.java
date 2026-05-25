@@ -33,12 +33,16 @@ public class PoolPermissionService {
     @Transactional(readOnly = true)
     public Usuario requireUsuarioDeEmpresa(UUID usuarioId, UUID empresaId) {
         Usuario usuario = requireUsuario(usuarioId);
-        // SUPERADMIN puede consultar cualquier empresa (modo soporte solo-lectura).
-        if (com.lulo.security.AuthContext.current()
-                .map(com.lulo.security.AuthenticatedUser::isSuperadmin)
-                .orElse(false)) {
-            return usuario;
-        }
+        // Bypass para Lulo internos con permisos de soporte/auditoría/empresas:
+        // pueden consultar datos de cualquier empresa cliente sin ser miembros.
+        boolean bypass = com.lulo.security.AuthContext.current().map(u ->
+                u.isSuperadmin()
+                        || u.hasPermiso("SOPORTE_PROCESOS_VER")
+                        || u.hasPermiso("AUDIT_GLOBAL_VER")
+                        || u.hasPermiso("EMPRESA_VER")
+        ).orElse(false);
+        if (bypass) return usuario;
+
         if (!usuario.getEmpresa().getId().equals(empresaId)) {
             throw new ApiException("El usuario no pertenece a esta empresa", HttpStatus.FORBIDDEN);
         }
