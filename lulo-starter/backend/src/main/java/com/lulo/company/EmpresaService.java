@@ -38,6 +38,8 @@ public class EmpresaService {
     @Autowired
     private UsuarioRepository        usuarioRepository;
     @Autowired
+    private com.lulo.process.ProcesoRepository procesoRepository;
+    @Autowired
     private PoolRepository           poolRepository;
     @Autowired
     private PermisoRepository        permisoRepository;
@@ -47,6 +49,8 @@ public class EmpresaService {
     private UsuarioRolPoolRepository usuarioRolPoolRepository;
     @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @Autowired
+    private com.lulo.users.UsuarioService usuarioService;
 
     @Transactional(readOnly = true)
     public List<EmpresaListItemResponse> listar() {
@@ -69,7 +73,7 @@ public class EmpresaService {
                 .dominio(empresa.getDominio())
                 .createdAt(empresa.getCreatedAt())
                 .totalUsuarios(usuarioRepository.findByEmpresaId(empresa.getId()).size())
-                .totalProcesos(0L)
+                .totalProcesos(procesoRepository.countByEmpresaIdAndActivoTrue(empresa.getId()))
                 .totalPools(poolRepository.findByEmpresaIdOrderByNombreAsc(empresa.getId()).size())
                 .build();
     }
@@ -184,6 +188,7 @@ public class EmpresaService {
                     .estado(u.getEstado())
                     .rolPrincipal(rolPrincipal)
                     .createdAt(u.getCreatedAt())
+                    .protegido(usuarioService.esProtegido(u))
                     .build();
         }).collect(Collectors.toList());
 
@@ -199,7 +204,7 @@ public class EmpresaService {
                 .emailContacto(empresa.getEmailContacto())
                 .createdAt(empresa.getCreatedAt())
                 .totalUsuarios(usuariosDto.size())
-                .totalProcesos(0L)
+                .totalProcesos(procesoRepository.countByEmpresaIdAndActivoTrue(empresa.getId()))
                 .totalPools(totalPools)
                 .totalRolesPool(totalRoles)
                 .usuarios(usuariosDto)

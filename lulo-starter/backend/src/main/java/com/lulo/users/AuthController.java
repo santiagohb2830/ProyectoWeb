@@ -113,6 +113,7 @@ public class AuthController {
                 : usuario.getEmpresa().getNombre());
         response.put("poolId", data.poolId());
         response.put("rol", data.rol());
+        response.put("rolPoolNombre", data.rolPoolNombre());
         response.put("tipoUsuario", data.tipoUsuario());
         response.put("esSuperadmin", data.esSuperadmin());
         response.put("esAdminEmpresa", "ADMIN_EMPRESA".equals(data.tipoUsuario()));

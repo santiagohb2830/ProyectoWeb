@@ -58,8 +58,16 @@ public class SecurityConfig {
                     .access((authSupplier, ctx) -> {
                         var a = authSupplier.get();
                         boolean ok = a != null && a.isAuthenticated() && a.getAuthorities().stream()
-                                .anyMatch(g -> g.getAuthority().equals("ROLE_SUPERADMIN")
-                                        || g.getAuthority().startsWith("PERM_EMPRESA_"));
+                                .anyMatch(g -> {
+                                    String n = g.getAuthority();
+                                    return n.equals("ROLE_SUPERADMIN")
+                                            || n.startsWith("PERM_EMPRESA_")
+                                            || n.equals("PERM_METRICAS_VER")
+                                            || n.equals("PERM_AUDIT_GLOBAL_VER")
+                                            || n.equals("PERM_LULO_USUARIO_VER")
+                                            || n.equals("PERM_LULO_ROL_GESTIONAR")
+                                            || n.equals("PERM_SOPORTE_PROCESOS_VER");
+                                });
                         return new org.springframework.security.authorization.AuthorizationDecision(ok);
                     })
                 // Métricas: solo superadmin

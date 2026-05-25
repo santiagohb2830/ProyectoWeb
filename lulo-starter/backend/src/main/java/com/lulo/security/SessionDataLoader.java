@@ -50,7 +50,12 @@ public class SessionDataLoader {
             String poolIdLulo = poolRepository
                     .findByEmpresaIdOrderByNombreAsc(usuario.getEmpresa().getId())
                     .stream().findFirst().map(p -> p.getId().toString()).orElse(null);
-            return new SessionData(poolIdLulo, "SUPERADMIN", tipo.name(), permisos, true);
+            String rolPoolNombre = usuarioRolPoolRepository.findByIdUsuarioId(usuario.getId()).stream()
+                    .map(urp -> urp.getRolPool().getNombre())
+                    .findFirst()
+                    .orElse("SuperAdmin");
+            return new SessionData(poolIdLulo, "SUPERADMIN", tipo.name(),
+                    permisos, true, rolPoolNombre);
         }
 
         // Pool por defecto de la empresa (necesario para el frontend builder).
@@ -91,12 +96,20 @@ public class SessionDataLoader {
         else if (esPropietarioPool) rolLegado = "PROPIETARIO";
         else rolLegado = "COLABORADOR";
 
+        // Nombre del primer rol_pool asignado (ej. "SuperAdmin", "Auditor").
+        // Es lo que vemos en el chip de la barra superior.
+        String rolPoolNombre = usuarioRolPoolRepository.findByIdUsuarioId(usuario.getId()).stream()
+                .map(urp -> urp.getRolPool().getNombre())
+                .findFirst()
+                .orElse(rolLegado);
+
         return new SessionData(
                 targetPool.getId().toString(),
                 rolLegado,
                 tipo.name(),
                 new ArrayList<>(permisosSet),
-                false
+                false,
+                rolPoolNombre
         );
     }
 
@@ -105,6 +118,13 @@ public class SessionDataLoader {
             String rol,
             String tipoUsuario,
             List<String> permisos,
-            boolean esSuperadmin
-    ) {}
+            boolean esSuperadmin,
+            String rolPoolNombre
+    ) {
+        /** Sobrecarga compatible: rolPoolNombre = rol legado. */
+        public SessionData(String poolId, String rol, String tipoUsuario,
+                           List<String> permisos, boolean esSuperadmin) {
+            this(poolId, rol, tipoUsuario, permisos, esSuperadmin, rol);
+        }
+    }
 }

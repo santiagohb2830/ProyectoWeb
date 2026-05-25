@@ -36,22 +36,51 @@ public class UsuarioController {
             m.put("estado", u.getEstado());
             m.put("empresaId", u.getEmpresa().getId().toString());
             m.put("tipoUsuario", u.getTipoUsuario().name());
+            m.put("protegido", usuarioService.esProtegido(u));
             return m;
         }).toList();
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA') or hasAuthority('PERM_LULO_USUARIO_CREAR') or hasAuthority('PERM_USUARIO_INVITAR')")
     public ResponseEntity<CrearUsuarioDirectoResponse> crear(
             @RequestBody CrearUsuarioDirectoRequest request) {
         return ResponseEntity.status(201).body(usuarioService.crearDirecto(request));
     }
 
     @PatchMapping("/{usuarioId}")
-    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA')")
+    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA') or hasAuthority('PERM_LULO_USUARIO_EDITAR') or hasAuthority('PERM_USUARIO_INVITAR')")
     public ResponseEntity<ActualizarUsuarioResponse> actualizar(
             @PathVariable UUID usuarioId,
             @RequestBody ActualizarUsuarioRequest request) {
         return ResponseEntity.ok(usuarioService.actualizar(usuarioId, request));
+    }
+
+    /** Reset password de un usuario. */
+    @PatchMapping("/{usuarioId}/password")
+    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA') or hasAuthority('PERM_LULO_USUARIO_EDITAR')")
+    public ResponseEntity<?> resetPassword(
+            @PathVariable UUID usuarioId,
+            @RequestBody java.util.Map<String, String> body) {
+        usuarioService.resetPassword(usuarioId, body.get("password"));
+        return ResponseEntity.ok(java.util.Map.of("mensaje", "Password actualizado"));
+    }
+
+    /** Cambia el email de un usuario (valida dominio empresa). */
+    @PatchMapping("/{usuarioId}/email")
+    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA') or hasAuthority('PERM_LULO_USUARIO_EDITAR')")
+    public ResponseEntity<?> cambiarEmail(
+            @PathVariable UUID usuarioId,
+            @RequestBody java.util.Map<String, String> body) {
+        usuarioService.cambiarEmail(usuarioId, body.get("email"));
+        return ResponseEntity.ok(java.util.Map.of("mensaje", "Email actualizado"));
+    }
+
+    /** Soft delete: marca el usuario como inactivo. */
+    @DeleteMapping("/{usuarioId}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN','ADMIN_EMPRESA') or hasAuthority('PERM_LULO_USUARIO_ELIMINAR')")
+    public ResponseEntity<?> eliminar(@PathVariable UUID usuarioId) {
+        usuarioService.eliminar(usuarioId);
+        return ResponseEntity.ok(java.util.Map.of("mensaje", "Usuario eliminado"));
     }
 }

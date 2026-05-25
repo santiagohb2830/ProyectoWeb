@@ -89,6 +89,87 @@ public class UsuarioService {
     private static final Set<String> ESTADOS_VALIDOS =
             Set.of("activo", "suspendido", "inactivo", "pendiente");
 
+    @Transactional
+    public void resetPassword(UUID usuarioId, String nuevaPassword) {
+        if (nuevaPassword == null || nuevaPassword.length() < 6) {
+            throw new ApiException("Password mínimo 6 caracteres", HttpStatus.BAD_REQUEST);
+        }
+        Usuario usuario = requireMutable(usuarioId);
+        usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        usuarioRepository.save(usuario);
+        auditService.registrar(usuario.getEmpresa(), usuario, "USUARIO",
+                usuario.getId(), "RESET_PASSWORD", null,
+                java.util.Map.of("email", usuario.getEmail()));
+    }
+
+    @Transactional
+    public void cambiarEmail(UUID usuarioId, String nuevoEmail) {
+        if (nuevoEmail == null || !nuevoEmail.contains("@")) {
+            throw new ApiException("Email inválido", HttpStatus.BAD_REQUEST);
+        }
+        Usuario usuario = requireMutable(usuarioId);
+        validarEmailContraDominioEmpresa(nuevoEmail, usuario.getEmpresa());
+        if (!usuario.getEmail().equalsIgnoreCase(nuevoEmail)
+                && usuarioRepository.existsByEmail(nuevoEmail)) {
+            throw new ApiException("Correo ya en uso", HttpStatus.CONFLICT);
+        }
+        String anterior = usuario.getEmail();
+        usuario.setEmail(nuevoEmail);
+        usuarioRepository.save(usuario);
+        auditService.registrar(usuario.getEmpresa(), usuario, "USUARIO",
+                usuario.getId(), "CAMBIAR_EMAIL",
+                java.util.Map.of("email", anterior),
+                java.util.Map.of("email", nuevoEmail));
+    }
+
+    /** Soft delete: marca usuario como inactivo. No se puede borrar protegidos. */
+    @Transactional
+    public void eliminar(UUID usuarioId) {
+        Usuario usuario = requireMutable(usuarioId);
+        usuario.setEstado("inactivo");
+        usuarioRepository.save(usuario);
+        auditService.registrar(usuario.getEmpresa(), usuario, "USUARIO",
+                usuario.getId(), "ELIMINAR",
+                java.util.Map.of("email", usuario.getEmail()),
+                null);
+    }
+
+    /**
+     * Valida que el usuario destino se pueda modificar:
+     *  - existe
+     *  - caller es SUPERADMIN o del mismo empresa
+     *  - no es SUPERADMIN ni el admin original de la empresa.
+     */
+    private Usuario requireMutable(UUID usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ApiException("Usuario no encontrado", HttpStatus.NOT_FOUND));
+        AuthenticatedUser caller = AuthContext.require();
+        if (!caller.isSuperadmin() && !caller.empresaId().equals(usuario.getEmpresa().getId())) {
+            throw new ApiException("No puede modificar usuarios de otra empresa",
+                    HttpStatus.FORBIDDEN);
+        }
+        if (esProtegido(usuario)) {
+            throw new ApiException(
+                    "Este usuario está protegido y no puede modificarse ni eliminarse",
+                    HttpStatus.FORBIDDEN);
+        }
+        return usuario;
+    }
+
+    /**
+     * Usuario protegido: SUPERADMIN dueño de la app, o el primer usuario que
+     * se creó en cada empresa (el admin original, "papá de los pollitos").
+     * Estos usuarios no se pueden editar ni eliminar desde la UI.
+     */
+    public boolean esProtegido(Usuario usuario) {
+        if (usuario.getTipoUsuario() == TipoUsuario.SUPERADMIN) return true;
+        Usuario primero = usuarioRepository.findByEmpresaId(usuario.getEmpresa().getId())
+                .stream()
+                .min(java.util.Comparator.comparing(Usuario::getCreatedAt))
+                .orElse(null);
+        return primero != null && primero.getId().equals(usuario.getId());
+    }
+
     private void validarEmailContraDominioEmpresa(String email, com.lulo.company.Empresa empresa) {
         if (email == null || !email.contains("@")) {
             throw new ApiException("Email inválido", HttpStatus.BAD_REQUEST);
