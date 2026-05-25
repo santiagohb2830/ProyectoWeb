@@ -31,11 +31,16 @@ public class JwtService {
         this.expiryMs = expiryMs;
     }
 
+    /**
+     * Genera JWT con la identidad mínima: sub, email, empresaId y tipoUsuario.
+     * Los permisos NO viajan en el token; se resuelven en el filtro a partir de
+     * tipoUsuario + datos de BD. Beneficios: token más pequeño y permisos
+     * siempre frescos (un cambio de rol surte efecto sin esperar refresh).
+     */
     public String generate(UUID usuarioId,
                            String email,
                            UUID empresaId,
-                           String tipoUsuario,
-                           List<String> permisos) {
+                           String tipoUsuario) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + expiryMs);
         return Jwts.builder()
@@ -43,11 +48,16 @@ public class JwtService {
                 .claim("email", email)
                 .claim("empresaId", empresaId == null ? null : empresaId.toString())
                 .claim("tipoUsuario", tipoUsuario)
-                .claim("permisos", permisos)
                 .issuedAt(now)
                 .expiration(exp)
                 .signWith(signingKey)
                 .compact();
+    }
+
+    /** Sobrecarga para compatibilidad: ignora la lista de permisos. */
+    public String generate(UUID usuarioId, String email, UUID empresaId,
+                           String tipoUsuario, List<String> ignoredPermisos) {
+        return generate(usuarioId, email, empresaId, tipoUsuario);
     }
 
     public Claims parse(String token) {

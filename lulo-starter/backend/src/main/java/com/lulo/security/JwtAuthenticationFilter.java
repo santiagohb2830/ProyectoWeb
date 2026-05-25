@@ -26,9 +26,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
 
     private final JwtService jwtService;
+    private final PermisoLookupService permisoLookup;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, PermisoLookupService permisoLookup) {
         this.jwtService = jwtService;
+        this.permisoLookup = permisoLookup;
     }
 
     @Override
@@ -45,9 +47,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String empresaIdStr = claims.get("empresaId", String.class);
                 UUID empresaId = empresaIdStr == null ? null : UUID.fromString(empresaIdStr);
                 String tipoUsuario = claims.get("tipoUsuario", String.class);
-                @SuppressWarnings("unchecked")
-                List<String> permisos = (List<String>) claims.get("permisos", List.class);
-                if (permisos == null) permisos = new ArrayList<>();
+
+                // Permisos NO viajan en el JWT. Se resuelven en cada request
+                // desde BD según tipoUsuario; así un cambio de rol surte
+                // efecto inmediato sin esperar al próximo refresh.
+                List<String> permisos = permisoLookup.resolver(usuarioId, tipoUsuario);
 
                 AuthenticatedUser principal = new AuthenticatedUser(
                         usuarioId, email, empresaId, tipoUsuario, permisos);

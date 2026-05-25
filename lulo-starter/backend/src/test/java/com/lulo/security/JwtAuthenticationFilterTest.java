@@ -20,7 +20,15 @@ class JwtAuthenticationFilterTest {
 
     private static final String SECRET = "test-secret-key-with-at-least-32-characters-padded-extra";
     private final JwtService jwt = new JwtService(SECRET, 60_000);
-    private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwt);
+    // Stub: en los tests no se ejercita la BD, basta con devolver lista vacía.
+    private final PermisoLookupService lookup =
+            new PermisoLookupService(null, null) {
+                @Override
+                public java.util.List<String> resolver(java.util.UUID id, String tipo) {
+                    return java.util.List.of("PROCESO_VER");
+                }
+            };
+    private final JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwt, lookup);
 
     @AfterEach
     void cleanContext() {
