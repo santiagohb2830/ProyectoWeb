@@ -14,4 +14,5 @@ public class UsuarioBasicoResponse {
     private String estado;
     private String rolPrincipal;
     private LocalDateTime createdAt;
+    private boolean protegido;
 }

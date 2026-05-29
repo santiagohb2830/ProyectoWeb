@@ -1,6 +1,6 @@
 @FilterDef(
         name = "empresaFilter",
-        parameters = @ParamDef(name = "empresaId", type = Integer.class)
+        parameters = @ParamDef(name = "empresaId", type = java.util.UUID.class)
 )
 package com.lulo;
 

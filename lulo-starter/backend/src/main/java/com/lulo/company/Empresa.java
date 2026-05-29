@@ -27,4 +27,11 @@ public class Empresa extends AuditableEntity {
 
     @Column(name = "email_contacto")
     private String emailContacto;
+
+    /** Dominio email (ej. "acme.com"). Usuarios de la empresa deben tener correos @dominio. */
+    @Column(length = 255)
+    private String dominio;
+
+    @Column(nullable = false)
+    private boolean activo = true;
 }

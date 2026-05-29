@@ -85,13 +85,15 @@ public class DiagramService {
         Usuario creadoPor = requireUsuarioConEdicionDiagrama(proceso, request.getCreadoPorId());
         Lane lane = resolveLane(procesoId, request.getLaneId());
 
+        validateTipoGateway(request.getTipoGateway());
+
         Gateway gateway = new Gateway();
         gateway.setProceso(proceso);
         gateway.setLane(lane);
         gateway.setLabel(request.getLabel());
         gateway.setPosX(request.getPosX());
         gateway.setPosY(request.getPosY());
-        gateway.setTipoGateway(request.getTipoGateway());
+        gateway.setTipoGateway(request.getTipoGateway().toLowerCase());
         gateway.setConfigJson(request.getConfigJson());
         gateway = gatewayRepository.save(gateway);
 
@@ -212,7 +214,10 @@ public class DiagramService {
         if (request.getLabel() != null) gateway.setLabel(request.getLabel());
         if (request.getPosX() != null) gateway.setPosX(request.getPosX());
         if (request.getPosY() != null) gateway.setPosY(request.getPosY());
-        if (request.getTipoGateway() != null) gateway.setTipoGateway(request.getTipoGateway());
+        if (request.getTipoGateway() != null) {
+            validateTipoGateway(request.getTipoGateway());
+            gateway.setTipoGateway(request.getTipoGateway().toLowerCase());
+        }
         if (request.getConfigJson() != null) gateway.setConfigJson(request.getConfigJson());
         if (request.getLaneId() != null) gateway.setLane(resolveLane(procesoId, request.getLaneId()));
 
@@ -601,6 +606,17 @@ public class DiagramService {
         }
 
         validateOutgoingConditionRules(fromNodo, condicionExpr);
+    }
+
+    private static final java.util.Set<String> TIPOS_GATEWAY_VALIDOS =
+            java.util.Set.of("exclusivo", "paralelo", "inclusivo");
+
+    private void validateTipoGateway(String tipo) {
+        if (tipo == null || !TIPOS_GATEWAY_VALIDOS.contains(tipo.toLowerCase())) {
+            throw new ApiException(
+                    "tipoGateway inválido. Valores permitidos: exclusivo, paralelo, inclusivo",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 
     private void validateOutgoingConditionRules(Nodo fromNodo, String condicionExpr) {

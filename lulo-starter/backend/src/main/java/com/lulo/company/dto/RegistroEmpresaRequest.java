@@ -18,6 +18,10 @@ public class RegistroEmpresaRequest {
     @NotBlank(message = "El NIT es obligatorio")
     private String nit;
 
+    /** Dominio email (sin @), ej. "acme.com". Email admin debe terminar en @dominio. */
+    @NotBlank(message = "El dominio es obligatorio")
+    private String dominio;
+
     @NotBlank(message = "El correo de contacto es obligatorio")
     @Email(message = "El correo de contacto no es válido")
     private String emailContacto;

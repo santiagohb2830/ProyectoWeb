@@ -13,6 +13,7 @@ public class EmpresaListItemResponse {
     private String nombre;
     private String nit;
     private String emailContacto;
+    private String dominio;
     private LocalDateTime createdAt;
     private long totalUsuarios;
     private long totalProcesos;

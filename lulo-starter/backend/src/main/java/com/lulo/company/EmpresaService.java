@@ -15,6 +15,7 @@ import com.lulo.rbac.RolPoolRepository;
 import com.lulo.rbac.UsuarioRolPool;
 import com.lulo.rbac.UsuarioRolPoolId;
 import com.lulo.rbac.UsuarioRolPoolRepository;
+import com.lulo.users.TipoUsuario;
 import com.lulo.users.Usuario;
 import com.lulo.users.UsuarioRepository;
 import com.lulo.process.ProcesoRepository;
@@ -40,6 +41,8 @@ public class EmpresaService {
     @Autowired
     private UsuarioRepository        usuarioRepository;
     @Autowired
+    private com.lulo.process.ProcesoRepository procesoRepository;
+    @Autowired
     private PoolRepository           poolRepository;
     @Autowired
     private PermisoRepository        permisoRepository;
@@ -49,28 +52,61 @@ public class EmpresaService {
     private UsuarioRolPoolRepository usuarioRolPoolRepository;
     @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @Autowired
+    private com.lulo.users.UsuarioService usuarioService;
 
     @Transactional(readOnly = true)
     public List<EmpresaListItemResponse> listar() {
+        // Oculta la empresa propietaria Lulo del listado: no es un cliente,
+        // es la empresa dueña de la app. Aparecería sólo si se accede al endpoint
+        // de detalle por ID explícitamente.
         return empresaRepository.findAll().stream()
-                .map(empresa -> EmpresaListItemResponse.builder()
-                        .id(empresa.getId())
-                        .nombre(empresa.getNombre())
-                        .nit(empresa.getNit())
-                        .emailContacto(empresa.getEmailContacto())
-                        .createdAt(empresa.getCreatedAt())
-                        .totalUsuarios(usuarioRepository.findByEmpresaId(empresa.getId()).size())
-                        .totalProcesos(0L)
-                        .totalPools(poolRepository.findByEmpresaIdOrderByNombreAsc(empresa.getId()).size())
-                        .build())
+                .filter(Empresa::isActivo)
+                .filter(e -> !"LULO-APP".equals(e.getNit()))
+                .map(this::toListItem)
                 .toList();
     }
     private ProcesoRepository        procesoRepository;
 
+    private EmpresaListItemResponse toListItem(Empresa empresa) {
+        return EmpresaListItemResponse.builder()
+                .id(empresa.getId())
+                .nombre(empresa.getNombre())
+                .nit(empresa.getNit())
+                .emailContacto(empresa.getEmailContacto())
+                .dominio(empresa.getDominio())
+                .createdAt(empresa.getCreatedAt())
+                .totalUsuarios(usuarioRepository.findByEmpresaId(empresa.getId()).size())
+                .totalProcesos(procesoRepository.countByEmpresaIdAndActivoTrue(empresa.getId()))
+                .totalPools(poolRepository.findByEmpresaIdOrderByNombreAsc(empresa.getId()).size())
+                .build();
+    }
+
+    private void validarDominio(String dominio) {
+        if (dominio == null || dominio.isBlank() ||
+                dominio.contains("@") || dominio.contains(" ") ||
+                !dominio.contains(".")) {
+            throw new ApiException(
+                    "Dominio inválido. Use formato 'empresa.com'",
+                    HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private void validarEmailDominio(String email, String dominio) {
+        if (email == null || !email.toLowerCase().endsWith("@" + dominio.toLowerCase())) {
+            throw new ApiException(
+                    "El correo del admin debe terminar en @" + dominio,
+                    HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @Transactional
     public RegistroEmpresaResponse registrar(RegistroEmpresaRequest request) {
 
-        // ── Validaciones de unicidad ──────────────────────────────────────────
+        // ── Validaciones de unicidad y dominio ────────────────────────────────
+        validarDominio(request.getDominio());
+        validarEmailDominio(request.getEmailAdmin(), request.getDominio());
+
         if (empresaRepository.existsByNit(request.getNit())) {
             throw new ApiException(
                     "Ya existe una empresa registrada con el NIT: " + request.getNit(),
@@ -88,6 +124,8 @@ public class EmpresaService {
         empresa.setNombre(request.getNombreEmpresa());
         empresa.setNit(request.getNit());
         empresa.setEmailContacto(request.getEmailContacto());
+        empresa.setDominio(request.getDominio().toLowerCase());
+        empresa.setActivo(true);
         empresa = empresaRepository.save(empresa);
 
         // ── 2. Crear Usuario administrador inicial ────────────────────────────
@@ -96,6 +134,7 @@ public class EmpresaService {
         admin.setEmail(request.getEmailAdmin());
         admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         admin.setEstado("activo");
+        admin.setTipoUsuario(TipoUsuario.ADMIN_EMPRESA);
         admin = usuarioRepository.save(admin);
 
         // ── 3. Crear Pool por defecto ─────────────────────────────────────────
@@ -153,6 +192,7 @@ public class EmpresaService {
                     .estado(u.getEstado())
                     .rolPrincipal(rolPrincipal)
                     .createdAt(u.getCreatedAt())
+                    .protegido(usuarioService.esProtegido(u))
                     .build();
         }).collect(Collectors.toList());
 
@@ -189,25 +229,111 @@ public class EmpresaService {
                 .emailContacto(empresa.getEmailContacto())
                 .createdAt(empresa.getCreatedAt())
                 .totalUsuarios(usuariosDto.size())
-                .totalProcesos(0L)
+                .totalProcesos(procesoRepository.countByEmpresaIdAndActivoTrue(empresa.getId()))
                 .totalPools(totalPools)
                 .totalRolesPool(totalRoles)
                 .usuarios(usuariosDto)
-                .build();
-    }
-                .totalUsuarios(usuarios.size())
-                .totalPools(pools.size())
-                .totalRolesPool(totalRolesPool)
-                .totalProcesos(totalProcesos)
-                .usuarios(usuarioResponses)
+                .dominio(empresa.getDominio())
+                .activo(empresa.isActivo())
                 .build();
     }
 
-    private String obtenerRolPrincipal(UUID usuarioId, UUID empresaId) {
-        List<UsuarioRolPool> asignaciones = usuarioRolPoolRepository.findByUsuarioIdAndEmpresaId(usuarioId, empresaId);
-        if (asignaciones.isEmpty()) {
-            return "Administrador";
+    @Transactional
+    public EmpresaListItemResponse editar(java.util.UUID id,
+            com.lulo.company.dto.EditarEmpresaRequest request) {
+        Empresa empresa = empresaRepository.findById(id)
+                .orElseThrow(() -> new ApiException("Empresa no encontrada", HttpStatus.NOT_FOUND));
+        if (!empresa.isActivo()) {
+            throw new ApiException("Empresa inactiva", HttpStatus.CONFLICT);
         }
-        return asignaciones.get(0).getRolPool().getNombre();
+        // La empresa propietaria de la app (Lulo) NO se edita por esta vía.
+        // Protege al SUPERADMIN de cambios accidentales que podrían bloquear
+        // el acceso al sistema.
+        if ("LULO-APP".equals(empresa.getNit())) {
+            throw new ApiException(
+                    "La empresa propietaria (Lulo) no se puede editar desde aquí",
+                    HttpStatus.FORBIDDEN);
+        }
+        if (request.getNombreEmpresa() != null && !request.getNombreEmpresa().isBlank()) {
+            empresa.setNombre(request.getNombreEmpresa());
+        }
+        if (request.getEmailContacto() != null && !request.getEmailContacto().isBlank()) {
+            empresa.setEmailContacto(request.getEmailContacto());
+        }
+        if (request.getDominio() != null && !request.getDominio().isBlank()) {
+            validarDominio(request.getDominio());
+            empresa.setDominio(request.getDominio().toLowerCase());
+        }
+
+        // Cambio/creación de admin: si se envía nuevoEmailAdmin, actualizar o crear.
+        if (request.getNuevoEmailAdmin() != null && !request.getNuevoEmailAdmin().isBlank()) {
+            validarEmailDominio(request.getNuevoEmailAdmin(), empresa.getDominio());
+
+            // Busca admin actual de la empresa
+            Usuario adminActual = usuarioRepository.findByEmpresaId(empresa.getId()).stream()
+                    .filter(u -> u.getTipoUsuario() == TipoUsuario.ADMIN_EMPRESA)
+                    .findFirst().orElse(null);
+
+            if (adminActual != null) {
+                // Si el email cambia, valida unicidad global
+                if (!adminActual.getEmail().equalsIgnoreCase(request.getNuevoEmailAdmin())
+                        && usuarioRepository.existsByEmail(request.getNuevoEmailAdmin())) {
+                    throw new ApiException("Correo ya en uso: " + request.getNuevoEmailAdmin(),
+                            HttpStatus.CONFLICT);
+                }
+                adminActual.setEmail(request.getNuevoEmailAdmin());
+                if (request.getNuevoPasswordAdmin() != null && request.getNuevoPasswordAdmin().length() >= 6) {
+                    adminActual.setPasswordHash(passwordEncoder.encode(request.getNuevoPasswordAdmin()));
+                }
+                usuarioRepository.save(adminActual);
+            } else {
+                // No hay admin: crear uno
+                if (usuarioRepository.existsByEmail(request.getNuevoEmailAdmin())) {
+                    throw new ApiException("Correo ya en uso: " + request.getNuevoEmailAdmin(),
+                            HttpStatus.CONFLICT);
+                }
+                if (request.getNuevoPasswordAdmin() == null || request.getNuevoPasswordAdmin().length() < 6) {
+                    throw new ApiException("Password del nuevo admin debe tener al menos 6 caracteres",
+                            HttpStatus.BAD_REQUEST);
+                }
+                Usuario nuevoAdmin = new Usuario();
+                nuevoAdmin.setEmpresa(empresa);
+                nuevoAdmin.setEmail(request.getNuevoEmailAdmin());
+                nuevoAdmin.setPasswordHash(passwordEncoder.encode(request.getNuevoPasswordAdmin()));
+                nuevoAdmin.setEstado("activo");
+                nuevoAdmin.setTipoUsuario(TipoUsuario.ADMIN_EMPRESA);
+                usuarioRepository.save(nuevoAdmin);
+            }
+        }
+
+        empresa = empresaRepository.save(empresa);
+        return toListItem(empresa);
+    }
+
+    /**
+     * Soft delete: marca empresa como inactiva.
+     * Requiere que el caller envíe el nombre exacto de la empresa como
+     * confirmación, evitando borrados accidentales.
+     */
+    @Transactional
+    public void desactivar(java.util.UUID id, String nombreConfirmacion) {
+        Empresa empresa = empresaRepository.findById(id)
+                .orElseThrow(() -> new ApiException("Empresa no encontrada", HttpStatus.NOT_FOUND));
+        if (nombreConfirmacion == null || !nombreConfirmacion.equals(empresa.getNombre())) {
+            throw new ApiException(
+                    "Debe escribir el nombre exacto de la empresa para confirmar el borrado",
+                    HttpStatus.BAD_REQUEST);
+        }
+        if ("LULO-APP".equals(empresa.getNit())) {
+            throw new ApiException("No se puede desactivar la empresa propietaria de la app",
+                    HttpStatus.FORBIDDEN);
+        }
+        empresa.setActivo(false);
+        empresaRepository.save(empresa);
+        // Suspende usuarios de la empresa para que no puedan ingresar.
+        usuarioRepository.findByEmpresaId(id).forEach(u -> {
+            u.setEstado("suspendido");
+            usuarioRepository.save(u);
+        });
     }
 }
