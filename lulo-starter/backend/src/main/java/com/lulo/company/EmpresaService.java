@@ -18,6 +18,9 @@ import com.lulo.rbac.UsuarioRolPoolRepository;
 import com.lulo.users.TipoUsuario;
 import com.lulo.users.Usuario;
 import com.lulo.users.UsuarioRepository;
+import com.lulo.process.ProcesoRepository;
+import com.lulo.company.dto.EmpresaDetailResponse;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -63,6 +66,7 @@ public class EmpresaService {
                 .map(this::toListItem)
                 .toList();
     }
+    private ProcesoRepository        procesoRepository;
 
     private EmpresaListItemResponse toListItem(Empresa empresa) {
         return EmpresaListItemResponse.builder()
@@ -198,6 +202,27 @@ public class EmpresaService {
                 .sum();
 
         return EmpresaDetalleResponse.builder()
+        List<Pool> pools = poolRepository.findByEmpresaIdOrderByNombreAsc(id);
+
+        long totalRolesPool = pools.stream()
+                .mapToLong(p -> rolPoolRepository.findByPoolId(p.getId()).size())
+                .sum();
+
+        long totalProcesos = pools.stream()
+                .mapToLong(p -> procesoRepository.findByPoolIdAndActivoTrue(p.getId()).size())
+                .sum();
+
+        List<EmpresaDetailResponse.UsuarioBasicoResponse> usuarioResponses = usuarios.stream()
+                .map(u -> EmpresaDetailResponse.UsuarioBasicoResponse.builder()
+                        .id(u.getId())
+                        .email(u.getEmail())
+                        .estado(u.getEstado())
+                        .rolPrincipal(obtenerRolPrincipal(u.getId(), id))
+                        .createdAt(u.getCreatedAt())
+                        .build())
+                .toList();
+
+        return EmpresaDetailResponse.builder()
                 .id(empresa.getId())
                 .nombre(empresa.getNombre())
                 .nit(empresa.getNit())
