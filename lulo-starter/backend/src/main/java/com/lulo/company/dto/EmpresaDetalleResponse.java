@@ -20,4 +20,6 @@ public class EmpresaDetalleResponse {
     private long totalPools;
     private long totalRolesPool;
     private List<UsuarioBasicoResponse> usuarios;
+    private String dominio;
+    private boolean activo;
 }

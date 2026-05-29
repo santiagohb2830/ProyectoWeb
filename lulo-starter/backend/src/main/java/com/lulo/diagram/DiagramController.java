@@ -22,12 +22,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/procesos/{procesoId}")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+// Cualquier mutación del diagrama requiere DIAGRAMA_EDITAR o ADMIN_EMPRESA.
+// Los GET internos siguen abiertos a isAuthenticated() porque solo los
+// llaman componentes que ya pasaron el PreAuthorize del ProcesoController.
+@PreAuthorize("hasAuthority('PERM_DIAGRAMA_EDITAR') or hasRole('ADMIN_EMPRESA')")
 @Tag(name = "Diagrama", description = "Gestión de elementos del diagrama: actividades, gateways, arcos y lanes")
 public class DiagramController {
 
