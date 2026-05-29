@@ -13,7 +13,7 @@ jobs:
 
   deploy:
     name: Build & Deploy en k3s
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, lulo-backend]
 
     steps:
       - name: Checkout código
