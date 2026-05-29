@@ -1,0 +1,40 @@
+name: Deploy Backend - Lulo
+
+on:
+  push:
+    branches:
+      - produccion
+
+env:
+  K8S_NAMESPACE: proyectoweb
+  DEPLOYMENT_NAME: backend
+
+jobs:
+
+  deploy:
+    name: Build & Deploy en k3s
+    runs-on: [self-hosted, Linux, X64, backend-runner]
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Build imagen Docker local
+        run: |
+          docker build -t lulo-backend:latest ./lulo-starter/backend
+          echo "✓ Imagen lulo-backend:latest construida"
+
+      - name: Aplicar al cluster k3s
+        run: |
+          kubectl rollout restart deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.K8S_NAMESPACE }}
+
+      - name: Verificar despliegue
+        run: |
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.K8S_NAMESPACE }} --timeout=120s
+
+      - name: Estado final de pods
+        if: always()
+        run: |
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }}

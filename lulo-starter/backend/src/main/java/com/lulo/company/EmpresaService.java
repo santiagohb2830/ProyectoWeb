@@ -41,8 +41,6 @@ public class EmpresaService {
     @Autowired
     private UsuarioRepository        usuarioRepository;
     @Autowired
-    private com.lulo.process.ProcesoRepository procesoRepository;
-    @Autowired
     private PoolRepository           poolRepository;
     @Autowired
     private PermisoRepository        permisoRepository;

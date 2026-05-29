@@ -44,15 +44,15 @@ public class AuditService {
                     "despues", despues != null ? despues : Map.of()
             );
 
-            AuditLog log = new AuditLog();
-            log.setEmpresa(empresa);
-            log.setUsuario(usuario);
-            log.setEntidad(entidad);
-            log.setEntidadId(entidadId);
-            log.setAccion(accion);
-            log.setDiffJson(objectMapper.writeValueAsString(diff));
+            AuditLog auditLog = new AuditLog();
+            auditLog.setEmpresa(empresa);
+            auditLog.setUsuario(usuario);
+            auditLog.setEntidad(entidad);
+            auditLog.setEntidadId(entidadId);
+            auditLog.setAccion(accion);
+            auditLog.setDiffJson(objectMapper.writeValueAsString(diff));
 
-            auditLogRepository.save(log);
+            auditLogRepository.save(auditLog);
 
         } catch (Exception e) {
             // Loguea el error pero no interrumpe la transacción principal
