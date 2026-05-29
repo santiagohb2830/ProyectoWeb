@@ -40,8 +40,5 @@ public class EmpresaController {
     @Operation(summary = "Obtener empresa", description = "Retorna los datos de una empresa con su lista de usuarios")
     public EmpresaDetalleResponse obtener(@PathVariable java.util.UUID id) {
         return empresaService.obtener(id);
-    @Operation(summary = "Obtener empresa por ID", description = "Retorna los detalles de la empresa especificada por ID")
-    public EmpresaDetailResponse obtenerPorId(@PathVariable UUID id) {
-        return empresaService.obtenerDetallePorId(id);
     }
 }
