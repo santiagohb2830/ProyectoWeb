@@ -51,6 +51,8 @@ public class EmpresaService {
     @Autowired
     private UsuarioRolPoolRepository usuarioRolPoolRepository;
     @Autowired
+    private ProcesoRepository        procesoRepository;
+    @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Autowired
     private com.lulo.users.UsuarioService usuarioService;
@@ -66,7 +68,6 @@ public class EmpresaService {
                 .map(this::toListItem)
                 .toList();
     }
-    private ProcesoRepository        procesoRepository;
 
     private EmpresaListItemResponse toListItem(Empresa empresa) {
         return EmpresaListItemResponse.builder()
@@ -196,15 +197,9 @@ public class EmpresaService {
                     .build();
         }).collect(Collectors.toList());
 
-        long totalPools = poolRepository.findByEmpresaIdOrderByNombreAsc(id).size();
-        long totalRoles = poolRepository.findByEmpresaIdOrderByNombreAsc(id).stream()
-                .mapToLong(p -> rolPoolRepository.findByPoolId(p.getId()).size())
-                .sum();
-
-        return EmpresaDetalleResponse.builder()
         List<Pool> pools = poolRepository.findByEmpresaIdOrderByNombreAsc(id);
 
-        long totalRolesPool = pools.stream()
+        long totalRoles = pools.stream()
                 .mapToLong(p -> rolPoolRepository.findByPoolId(p.getId()).size())
                 .sum();
 
@@ -212,25 +207,15 @@ public class EmpresaService {
                 .mapToLong(p -> procesoRepository.findByPoolIdAndActivoTrue(p.getId()).size())
                 .sum();
 
-        List<EmpresaDetailResponse.UsuarioBasicoResponse> usuarioResponses = usuarios.stream()
-                .map(u -> EmpresaDetailResponse.UsuarioBasicoResponse.builder()
-                        .id(u.getId())
-                        .email(u.getEmail())
-                        .estado(u.getEstado())
-                        .rolPrincipal(obtenerRolPrincipal(u.getId(), id))
-                        .createdAt(u.getCreatedAt())
-                        .build())
-                .toList();
-
-        return EmpresaDetailResponse.builder()
+        return EmpresaDetalleResponse.builder()
                 .id(empresa.getId())
                 .nombre(empresa.getNombre())
                 .nit(empresa.getNit())
                 .emailContacto(empresa.getEmailContacto())
                 .createdAt(empresa.getCreatedAt())
                 .totalUsuarios(usuariosDto.size())
-                .totalProcesos(procesoRepository.countByEmpresaIdAndActivoTrue(empresa.getId()))
-                .totalPools(totalPools)
+                .totalProcesos(totalProcesos)
+                .totalPools(pools.size())
                 .totalRolesPool(totalRoles)
                 .usuarios(usuariosDto)
                 .dominio(empresa.getDominio())

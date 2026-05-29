@@ -55,8 +55,5 @@ public class EmpresaController {
             throw new ApiException("No autorizado para ver esta empresa", HttpStatus.FORBIDDEN);
         }
         return empresaService.obtener(id);
-    @Operation(summary = "Obtener empresa por ID", description = "Retorna los detalles de la empresa especificada por ID")
-    public EmpresaDetailResponse obtenerPorId(@PathVariable UUID id) {
-        return empresaService.obtenerDetallePorId(id);
     }
 }
