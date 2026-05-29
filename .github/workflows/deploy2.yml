@@ -13,7 +13,7 @@ jobs:
 
   deploy:
     name: Build & Deploy en k3s
-    runs-on: [self-hosted, Linux, X64, backend-runner]
+    runs-on: [self-hosted]
 
     steps:
       - name: Checkout código
