@@ -90,6 +90,7 @@ class UsuarioServiceIsolationTest {
 
         Empresa emp = new Empresa();
         emp.setNombre("Empresa B");
+        emp.setDominio("b.com");
         when(empresaRepository.findById(empresaB)).thenReturn(java.util.Optional.of(emp));
         // Resto de mocks no se ejercitan: validamos solo que pasa la barrera de empresa.
         when(rolPoolRepository.findById(any())).thenReturn(java.util.Optional.empty());

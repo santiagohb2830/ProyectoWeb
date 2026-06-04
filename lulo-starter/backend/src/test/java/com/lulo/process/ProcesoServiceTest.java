@@ -59,6 +59,7 @@ class ProcesoServiceTest {
     @Mock private DiagramService             diagramService;
     @Mock private PoolPermissionService      poolPermissionService;
     @Mock private ProcesoCompartidoService   procesoCompartidoService;
+    @Mock private com.lulo.execution.CasoLogRepository casoLogRepository;
 
     @InjectMocks
     private ProcesoService procesoService;
