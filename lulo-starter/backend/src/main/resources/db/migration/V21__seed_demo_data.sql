@@ -1,3 +1,4 @@
+kubectl get pods -n proyectoweb
 -- V20__seed_demo_data.sql
 -- Snapshot de datos demo (empresas, pools, usuarios, roles, permisos, asignaciones)
 -- Generado 2026-05-25 desde DB remota grupo12.
