@@ -110,6 +110,15 @@
       <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- Selenium (pruebas E2E). Selenium Manager (integrado desde 4.6)
+         descarga y configura ChromeDriver automaticamente en tiempo de ejecucion. -->
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-java</artifactId>
+      <version>4.27.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

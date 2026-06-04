@@ -7,6 +7,7 @@ import com.lulo.common.exception.ApiException;
 import com.lulo.company.Empresa;
 import com.lulo.company.EmpresaRepository;
 import com.lulo.diagram.DiagramService;
+import com.lulo.execution.CasoLogRepository;
 import com.lulo.pool.Pool;
 import com.lulo.pool.PoolRepository;
 import com.lulo.process.dto.CrearProcesoRequest;
@@ -59,6 +60,7 @@ class ProcesoServiceTest {
     @Mock private DiagramService             diagramService;
     @Mock private PoolPermissionService      poolPermissionService;
     @Mock private ProcesoCompartidoService   procesoCompartidoService;
+    @Mock private CasoLogRepository          casoLogRepository;
 
     @InjectMocks
     private ProcesoService procesoService;

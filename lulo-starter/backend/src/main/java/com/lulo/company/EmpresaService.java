@@ -41,7 +41,7 @@ public class EmpresaService {
     @Autowired
     private UsuarioRepository        usuarioRepository;
     @Autowired
-    private com.lulo.process.ProcesoRepository procesoRepository;
+    private ProcesoRepository        procesoRepository;
     @Autowired
     private PoolRepository           poolRepository;
     @Autowired
@@ -50,8 +50,6 @@ public class EmpresaService {
     private RolPoolRepository        rolPoolRepository;
     @Autowired
     private UsuarioRolPoolRepository usuarioRolPoolRepository;
-    @Autowired
-    private ProcesoRepository        procesoRepository;
     @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Autowired

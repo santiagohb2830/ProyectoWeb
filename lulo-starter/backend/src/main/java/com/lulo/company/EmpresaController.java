@@ -1,6 +1,8 @@
 package com.lulo.company;
 
 import com.lulo.common.exception.ApiException;
+import com.lulo.security.AuthContext;
+import com.lulo.security.AuthenticatedUser;
 import com.lulo.company.dto.EmpresaDetalleResponse;
 import com.lulo.company.dto.EmpresaListItemResponse;
 import com.lulo.company.dto.RegistroEmpresaRequest;
