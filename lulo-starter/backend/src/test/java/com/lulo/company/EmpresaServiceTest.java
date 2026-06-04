@@ -46,6 +46,8 @@ class EmpresaServiceTest {
     @Mock private PermisoRepository        permisoRepository;
     @Mock private RolPoolRepository        rolPoolRepository;
     @Mock private UsuarioRolPoolRepository usuarioRolPoolRepository;
+    @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @Mock private com.lulo.users.UsuarioService usuarioService;
 
     @InjectMocks
     private EmpresaService empresaService;
